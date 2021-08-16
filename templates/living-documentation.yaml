@@ -28,6 +28,9 @@ Resources:
             - Effect: Allow
               Action: cloudwatch:DescribeAlarms
               Resource: '*'
+            - Effect: Allow
+              Action: cloudformation:DescribeStacks
+              ResourcE: '*'
       Environment:
         Variables:
           SUPERWERKER_DOMAIN: !Ref SuperwerkerDomain
@@ -38,8 +41,28 @@ Resources:
         from datetime import datetime
         cw = boto3.client("cloudwatch")
         ssm = boto3.client("ssm")
+        cloudformation = boto3.resource('cloudformation')
+
+
 
         def handler(event, context):
+          cloudformation_text = """
+        ### Stacks
+        Stack | State
+        ---|---
+        """
+          
+          for stack in filter(lambda x: "superwerker" in x.name, cloudformation.stacks.all()):
+            status = stack.stack_status
+            emoji = """✔️""" if status=="CREATE_COMPLETE" else """⏳"""
+            cloudformation_text += """{stackname} | {stateemoji} {stackstate}
+        """.format(
+          stackname=stack.name,
+          stackstate=status,
+          stateemoji=emoji
+        )
+
+          
           dns_domain =os.environ['SUPERWERKER_DOMAIN']
           superwerker_config = {}
           for ssm_parameter in ssm.get_parameters(Names=['/superwerker/domain_name_servers'])['Parameters']:
@@ -80,6 +103,8 @@ Resources:
 
         {dns_delegation}
 
+        {cloudformation}
+
         &nbsp;
         ## Next steps - finish setup
         &nbsp;
@@ -93,8 +118,8 @@ Resources:
         ### Organizations Setup
 
         - Set up recommended organizational units via [Control Tower](/controltower/home/organizationunits?region={region}) acording to the [Organizing Your AWS Environment Using Multiple Accounts whitepaper](https://docs.aws.amazon.com/whitepapers/latest/organizing-your-aws-environment/production-starter-organization.html)
-         - Create a `Workloads_Prod` organizational unit for production workloads
-         - Create a `Workloads_Test` organizational unit for test/dev workloads
+        - Create a `Workloads_Prod` organizational unit for production workloads
+        - Create a `Workloads_Test` organizational unit for test/dev workloads
 
         &nbsp;
         ## What now? Standard operating procedures
@@ -118,7 +143,7 @@ Resources:
         ```
         Updated at {current_time} (use browser reload to refresh)
         ```
-          """.format(dns_delegation=dns_delegation_text, current_time=datetime.now(), region=os.environ['AWS_REGION'], dns_domain=dns_domain)
+          """.format(dns_delegation=dns_delegation_text, cloudformation=cloudformation_text, current_time=datetime.now(), region=os.environ['AWS_REGION'], dns_domain=dns_domain)
           cw.put_dashboard(
             DashboardName='superwerker',
             DashboardBody=json.dumps({"widgets": [{"type": "text","x": 0,"y": 0,"width": 24,"height": 20,"properties": {"markdown": markdown}}]}),
@@ -128,3 +153,7 @@ Resources:
 
 Metadata:
   SuperwerkerVersion: 0.0.0-DEVELOPMENT
+Outputs:
+  CloudWatchDashboard:
+    Description: See the CloudWatch superwerker dashboard for the current state of your deployment
+    Value: https://console.aws.amazon.com/cloudwatch/home#dashboards:name=superwerker       
