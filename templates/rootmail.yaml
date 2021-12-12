@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
+Description: Sets up root mail. (qs-1s3rsr7mr)
 
 Parameters:
   Domain:
@@ -442,7 +443,7 @@ Resources:
                       Service: lambda.amazonaws.com
                     Action: sts:AssumeRole
               ManagedPolicyArns:
-                - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+                - arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
               Policies:
                 - PolicyName: AllowSesAccess
                   PolicyDocument:
@@ -569,7 +570,7 @@ Resources:
                       Service: lambda.amazonaws.com
                     Action: sts:AssumeRole
               ManagedPolicyArns:
-                - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+                - arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
               Policies:
                 - PolicyName: OpsSantaFunctionRolePolicy
                   PolicyDocument:
